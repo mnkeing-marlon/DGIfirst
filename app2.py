@@ -1,4 +1,5 @@
 import io
+import sys
 import streamlit as st
 from extractor import extract_double
 from comparator import comparer
@@ -162,6 +163,7 @@ else:
                 extraction_a, extraction_b = extract_double(api_key, tmp_path)
             except:
                 st.info(" 🚩 Limite de la cle API atteinte. Extraction interrompue 🚩.")
+                sys.exit(1) 
 
 
             
