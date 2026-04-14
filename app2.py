@@ -148,24 +148,28 @@ if not image_file:
     st.info(" 👈Bienvenue. Veuillez glisser un document financier dans le panneau latéral pour initier l'analyse.")
 else:
     # Action
-    try:
+    if st.button("Extraction"):
+        
+        # Logique (Ton moteur - Intouché)
+        api_key = st.secrets["GEMINI_API_KEY"]
+        tmp_path = f"C:\\Users\\hp\\AppData\\Local\\Temp\\{image_file.name}"
+        with open(tmp_path, "wb") as f:
+            f.write(image_file.getbuffer())
 
-        if st.button("Extraction"):
-            envoyer_email()
-            # Logique (Ton moteur - Intouché)
-            api_key = st.secrets["GEMINI_API_KEY"]
-            tmp_path = f"C:\\Users\\hp\\AppData\\Local\\Temp\\{image_file.name}"
-            with open(tmp_path, "wb") as f:
-                f.write(image_file.getbuffer())
-
-            with st.status(" **En cours**", expanded=True) as status:
-                st.write("🌐 Connexion au cluster Gemini Pro...")
+        with st.status(" **En cours**", expanded=True) as status:
+            st.write("🌐 Connexion au cluster Gemini Pro...")
+            try : 
                 extraction_a, extraction_b = extract_double(api_key, tmp_path)
-                
-                st.write(" Analyse différentielle des extractions...")
-                resultat = comparer(extraction_a, extraction_b)
-                
-                st.write(" Compilation du rapport certifié...")
+            except:
+                st.info(" 🚩 Limite de la cle API atteinte. Extraction interrompue 🚩.")
+
+
+            
+            st.write(" Analyse différentielle des extractions...")
+            resultat = comparer(extraction_a, extraction_b)
+            
+            st.write(" Compilation du rapport certifié...")
+            try:
                 wb = generer_excel(resultat, tmp_path)
                 buf_excel = io.BytesIO()
                 wb.save(buf_excel)
@@ -174,54 +178,57 @@ else:
                 rapport_txt = generer_rapport_txt(resultat, tmp_path)
                 buf_txt = io.BytesIO(rapport_txt.encode("utf-8"))
                 status.update(label="✨ Analyse terminée. Intégrité vérifiée.", state="complete")
-
-            # 5. RÉSULTATS (Layout 3 colonnes ultra-pro)
-            rapport = resultat["rapport"]
+            except:
+                st.info(" 🚩 Limite de la cle API atteinte. Generation interrompue 🚩.")
             
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("INTÉGRITÉ", f"{rapport['score_global']}%")
-            with col2:
-                st.metric("CRITIQUES", rapport["rouges"], delta="Attention", delta_color="inverse")
-            with col3:
-                st.metric("INCERTITUDES", rapport["oranges"], delta="Vérification manuelle")
 
-            st.markdown("<br>", unsafe_allow_html=True)
+        # 5. RÉSULTATS (Layout 3 colonnes ultra-pro)
+        rapport = resultat["rapport"]
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("INTÉGRITÉ", f"{rapport['score_global']}%")
+        with col2:
+            st.metric("CRITIQUES", rapport["rouges"], delta="Attention", delta_color="inverse")
+        with col3:
+            st.metric("INCERTITUDES", rapport["oranges"], delta="Vérification manuelle")
 
-            # 6. EXPORT (Cartes cliquables simulées)
-            st.markdown("###  Livrables de Sortie")
-            nom_base = image_file.name.rsplit(".", 1)[0]
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # 6. EXPORT (Cartes cliquables simulées)
+        st.markdown("###  Livrables de Sortie")
+        nom_base = image_file.name.rsplit(".", 1)[0]
+        
+        c1, c2 = st.columns(2)
+
+        with c1:
+            # Créer un ZIP avec les deux fichiers
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                # Ajouter Excel
+                zip_file.writestr(f"{nom_base}_DATA.xlsx", buf_excel.getvalue())
+                # Ajouter TXT
+                zip_file.writestr(f"{nom_base}_AUDIT_LOG.txt", rapport_txt.encode('utf-8'))
             
-            c1, c2 = st.columns(2)
+            zip_buffer.seek(0)
+            
+            st.download_button(
+                label="📦 EXPORTER TOUT (ZIP)",
+                data=zip_buffer,
+                file_name=f"{nom_base}_DGI.zip",
+                mime="application/zip",
+                use_container_width=True,
+                type="primary"
+            )
 
-            with c1:
-                # Créer un ZIP avec les deux fichiers
-                zip_buffer = io.BytesIO()
-                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                    # Ajouter Excel
-                    zip_file.writestr(f"{nom_base}_DATA.xlsx", buf_excel.getvalue())
-                    # Ajouter TXT
-                    zip_file.writestr(f"{nom_base}_AUDIT_LOG.txt", rapport_txt.encode('utf-8'))
-                
-                zip_buffer.seek(0)
-                
-                st.download_button(
-                    label="📦 EXPORTER TOUT (ZIP)",
-                    data=zip_buffer,
-                    file_name=f"{nom_base}_DGI.zip",
-                    mime="application/zip",
-                    use_container_width=True,
-                    type="primary"
-                )
+        with c2:
+            st.download_button(
+                label="📊 EXPORTER DATA EXCEL",
+                data=buf_excel,
+                file_name=f"{nom_base}_DGIDoc.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
 
-            with c2:
-                st.download_button(
-                    label="📊 EXPORTER DATA EXCEL",
-                    data=buf_excel,
-                    file_name=f"{nom_base}_DGIDoc.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
-    except:
-        st.info(" 🚩 Limite de la cle API atteinte 🚩.")
+
 
