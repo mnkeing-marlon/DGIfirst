@@ -125,6 +125,8 @@ def envoyer_email():
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login(st.secrets["email_envoyeur"], st.secrets["mot_de_passe_app"])
         server.send_message(msg)
+        
+st.write("Email configuré :", st.secrets.get("email_envoyeur", "NON TROUVÉ"))
 
 
 st.markdown("""
