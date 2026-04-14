@@ -1,0 +1,5 @@
+anthropic
+openpyxl
+Pillow
+protobuf
+streamlit
