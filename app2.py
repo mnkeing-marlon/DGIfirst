@@ -18,7 +18,7 @@ def envoyer_email():
         msg["From"] = st.secrets["email_envoyeur"]
         msg["To"] = st.secrets["email_destinataire"]
         msg["Subject"] = f"Extraction - {datetime.now().strftime('%H:%M:%S')}"
-        msg.set_content(f"Le bouton Extraction a été cliqué à {datetime.now()}")
+        msg.set_content(f"Le bouton Extraction a été cliqué à {datetime.now()} sur l'application DGIDocExtract")
         
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(st.secrets["email_envoyeur"], st.secrets["mot_de_passe_app"])
