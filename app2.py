@@ -161,7 +161,6 @@ else:
             with st.status(" **En cours**", expanded=True) as status:
                 st.write("🌐 Connexion au cluster Gemini Pro...")
                 extraction_a, extraction_b = extract_double(api_key, tmp_path)
-                st.info(" 🚩 Limite de la cle API atteinte. Extraction interrompue 🚩.")
     
                 
                 st.write(" Analyse différentielle des extractions...")
@@ -176,7 +175,6 @@ else:
                 rapport_txt = generer_rapport_txt(resultat, tmp_path)
                 buf_txt = io.BytesIO(rapport_txt.encode("utf-8"))
                 status.update(label="✨ Analyse terminée. Intégrité vérifiée.", state="complete")
-                 st.info(" 🚩 Limite de la cle API atteinte. Generation interrompue 🚩.")
                 
     
             # 5. RÉSULTATS (Layout 3 colonnes ultra-pro)
