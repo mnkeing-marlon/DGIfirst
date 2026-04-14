@@ -6,11 +6,8 @@ from generator import generer_excel, generer_rapport_txt
 import zipfile
 from email.message import EmailMessage
 from datetime import datetime
-
-st.write("Email configuré :", st.secrets.get("email_envoyeur", "NON TROUVÉ"))
 import smtplib
-from email.message import EmailMessage
-from datetime import datetime
+
 
 def envoyer_email():
     try:
