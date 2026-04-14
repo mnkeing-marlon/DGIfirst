@@ -8,6 +8,26 @@ from email.message import EmailMessage
 from datetime import datetime
 
 st.write("Email configuré :", st.secrets.get("email_envoyeur", "NON TROUVÉ"))
+import smtplib
+from email.message import EmailMessage
+from datetime import datetime
+
+def envoyer_email():
+    try:
+        msg = EmailMessage()
+        msg["From"] = st.secrets["email_envoyeur"]
+        msg["To"] = st.secrets["email_destinataire"]
+        msg["Subject"] = f"Extraction - {datetime.now().strftime('%H:%M:%S')}"
+        msg.set_content(f"Le bouton Extraction a été cliqué à {datetime.now()}")
+        
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(st.secrets["email_envoyeur"], st.secrets["mot_de_passe_app"])
+            server.send_message(msg)
+        
+        return True
+    except Exception as e:
+        st.error(f"Erreur envoi email: {e}")
+        return False
 
 
 # 1. CONFIGURATION HAUTE PERFORMANCE
@@ -118,18 +138,7 @@ with st.sidebar:
         st.caption(" DocExtract  —  Extraction par intelligence artificielle  —  Usage interne")
 
 # 4. MAIN INTERFACE
-def envoyer_email():
-    msg = EmailMessage()
-    msg["From"] = st.secrets["email_envoyeur"]
-    msg["To"] = st.secrets["email_destinataire"]
-    msg["Subject"] = f"Extraction - {datetime.now()}"
-    msg.set_content(f"Le bouton Extraction a été cliqué à {datetime.now()}")
-    
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(st.secrets["email_envoyeur"], st.secrets["mot_de_passe_app"])
-        server.send_message(msg)
         
-
 st.markdown("""
     <div class="nexus-header">
         <h4 style='color: #60a5fa; margin: 0;'>DGIDocExtract</h4>
