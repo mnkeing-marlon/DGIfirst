@@ -150,7 +150,7 @@ if not image_file:
 else:
     # Action
     if st.button("Extraction"):
-        
+        envoyer_email()
         # Logique (Ton moteur - Intouché)
         api_key = st.secrets["GEMINI_API_KEY"]
         tmp_path = f"C:\\Users\\hp\\AppData\\Local\\Temp\\{image_file.name}"
@@ -163,8 +163,6 @@ else:
                 extraction_a, extraction_b = extract_double(api_key, tmp_path)
             except:
                 st.info(" 🚩 Limite de la cle API atteinte. Extraction interrompue 🚩.")
-                sys.exit(1) 
-
 
             
             st.write(" Analyse différentielle des extractions...")
