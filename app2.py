@@ -4,6 +4,8 @@ from extractor import extract_double
 from comparator import comparer
 from generator import generer_excel, generer_rapport_txt
 import zipfile
+from email.message import EmailMessage
+from datetime import datetime
 
 # 1. CONFIGURATION HAUTE PERFORMANCE
 st.set_page_config(
@@ -113,6 +115,18 @@ with st.sidebar:
         st.caption(" DocExtract  —  Extraction par intelligence artificielle  —  Usage interne")
 
 # 4. MAIN INTERFACE
+def envoyer_email():
+    msg = EmailMessage()
+    msg["From"] = st.secrets["email_envoyeur"]
+    msg["To"] = st.secrets["email_destinataire"]
+    msg["Subject"] = f"Extraction - {datetime.now()}"
+    msg.set_content(f"Le bouton Extraction a été cliqué à {datetime.now()}")
+    
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(st.secrets["email_envoyeur"], st.secrets["mot_de_passe_app"])
+        server.send_message(msg)
+
+
 st.markdown("""
     <div class="nexus-header">
         <h4 style='color: #60a5fa; margin: 0;'>DGIDocExtract</h4>
@@ -128,7 +142,7 @@ else:
     try:
 
         if st.button("Extraction"):
-            
+            envoyer_email()
             # Logique (Ton moteur - Intouché)
             api_key = st.secrets["GEMINI_API_KEY"]
             tmp_path = f"C:\\Users\\hp\\AppData\\Local\\Temp\\{image_file.name}"
