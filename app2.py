@@ -7,6 +7,9 @@ import zipfile
 from email.message import EmailMessage
 from datetime import datetime
 
+st.write("Email configuré :", st.secrets.get("email_envoyeur", "NON TROUVÉ"))
+
+
 # 1. CONFIGURATION HAUTE PERFORMANCE
 st.set_page_config(
     page_title="DGIDocExtract",
@@ -126,8 +129,6 @@ def envoyer_email():
         server.login(st.secrets["email_envoyeur"], st.secrets["mot_de_passe_app"])
         server.send_message(msg)
         
-st.write("Email configuré :", st.secrets.get("email_envoyeur", "NON TROUVÉ"))
-
 
 st.markdown("""
     <div class="nexus-header">
