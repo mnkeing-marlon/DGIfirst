@@ -101,21 +101,34 @@ def extract_once_claude(api_key: str, image_path: str, prompt: str) -> dict:
 
 
 def extract_once_gemini(api_key: str, image_path: str, prompt: str) -> dict:
-    import google.generativeai as genai
-    from PIL import Image
+    from google import genai
+    from google.genai import types
+    import pathlib
 
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-2.0-flash")
-    image = Image.open(image_path)
-    response = model.generate_content([prompt, image])
+    client = genai.Client(api_key=api_key)
+    image_bytes = pathlib.Path(image_path).read_bytes()
+    ext = pathlib.Path(image_path).suffix.lower()
+    mime = MEDIA_TYPES.get(ext, "image/jpeg")
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",  # ← MODIFIÉ
+        contents=[
+            types.Part.from_bytes(data=image_bytes, mime_type=mime),
+            types.Part.from_text(text=prompt)
+        ]
+    )
     return parse_json(response.text)
 
 
 def extract_double(api_key: str, image_path: str, engine: str = "claude") -> tuple[dict, dict]:
+    import time
+    
     if engine == "gemini":
-        extraction_a = extract_once_claude(api_key, image_path, PROMPT_A)
-        extraction_b = extract_once_claude(api_key, image_path, PROMPT_B)
-    else:
+        # ✅ MODIFIÉ : Maintenant utilise bien Gemini
         extraction_a = extract_once_gemini(api_key, image_path, PROMPT_A)
         extraction_b = extract_once_gemini(api_key, image_path, PROMPT_B)
+    else:
+        extraction_a = extract_once_claude(api_key, image_path, PROMPT_A)
+        extraction_b = extract_once_claude(api_key, image_path, PROMPT_B)
+    
     return extraction_a, extraction_b
