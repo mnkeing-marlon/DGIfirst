@@ -3,5 +3,4 @@ openpyxl
 Pillow
 protobuf
 streamlit
-genai
-google
+google.genai
