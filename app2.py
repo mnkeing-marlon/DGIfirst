@@ -151,7 +151,6 @@ else:
     try:
         # Action
         if st.button("Extraction"):
-            envoyer_email()
             # Logique (Ton moteur - Intouché)
             api_key = st.secrets["GEMINI_API_KEY"]
             tmp_path = f"C:\\Users\\hp\\AppData\\Local\\Temp\\{image_file.name}"
@@ -160,9 +159,8 @@ else:
     
             with st.status(" **En cours**", expanded=True) as status:
                 st.write("🌐 Connexion au cluster Gemini Pro...")
-                extraction_a, extraction_b = extract_double(api_key, tmp_path)
-    
-                
+                extraction_a, extraction_b = extract_double(api_key, tmp_path,engine="gemini")
+                envoyer_email()
                 st.write(" Analyse différentielle des extractions...")
                 resultat = comparer(extraction_a, extraction_b)
                 
