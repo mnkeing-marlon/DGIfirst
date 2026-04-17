@@ -110,14 +110,30 @@ def extract_once_gemini(api_key: str, image_path: str, prompt: str) -> dict:
     ext = pathlib.Path(image_path).suffix.lower()
     mime = MEDIA_TYPES.get(ext, "image/jpeg")
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",  # ← MODIFIÉ
-        contents=[
-            types.Part.from_bytes(data=image_bytes, mime_type=mime),
-            types.Part.from_text(text=prompt)
-        ]
-    )
-    return parse_json(response.text)
+    # Récupère la liste des modèles disponibles
+    available_models = []
+    for model in client.models.list():
+        if 'gemini' in model.name:
+            available_models.append(model.name)
+    
+    # Teste chaque modèle disponible
+    for model_name in available_models:
+        try:
+            # Test rapide
+            client.models.generate_content(model=model_name, contents=["test"])
+            # Succès !
+            response = client.models.generate_content(
+                model=model_name,
+                contents=[
+                    types.Part.from_bytes(data=image_bytes, mime_type=mime),
+                    types.Part.from_text(text=prompt)
+                ]
+            )
+            return parse_json(response.text)
+        except:
+            continue
+    
+    raise Exception(f"Aucun modèle fonctionnel parmi {available_models}")
 
 
 def extract_double(api_key: str, image_path: str, engine: str = "claude") -> tuple[dict, dict]:
