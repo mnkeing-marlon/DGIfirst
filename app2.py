@@ -148,82 +148,94 @@ st.markdown("""
 if not image_file:
     st.info(" 👈Bienvenue. Veuillez glisser un document financier dans le panneau latéral pour initier l'analyse.")
 else:
-    try:
-        # Action
-        if st.button("Extraction"):
-            # Logique (Ton moteur - Intouché)
+    if st.button("Extraction"):
+        tmp_path = None
+        try:
+            # 1. Configuration
             api_key = st.secrets["GEMINI_API_KEY"]
-            tmp_path = f"C:\\Users\\hp\\AppData\\Local\\Temp\\{image_file.name}"
-            with open(tmp_path, "wb") as f:
-                f.write(image_file.getbuffer())
-    
-            with st.status(" **En cours**", expanded=True) as status:
-                st.write("🌐 Connexion au cluster Gemini Pro...")
-                extraction_a, extraction_b = extract_double(api_key, tmp_path,engine="gemini")
-                envoyer_email()
-                st.write(" Analyse différentielle des extractions...")
+            
+            # 2. Fichier temporaire (portable)
+            import tempfile
+            import os
+            
+            with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{image_file.name}") as tmp_file:
+                tmp_file.write(image_file.getbuffer())
+                tmp_path = tmp_file.name
+            
+            # 3. Extraction
+            with st.status("🚀 Extraction en cours...", expanded=True) as status:
+                try:
+                    status.write("🌐 Appel à l'API Gemini...")
+                    extraction_a, extraction_b = extract_double(api_key, tmp_path, engine="gemini")
+                    status.write("✅ Extraction réussie")
+                except Exception as api_error:
+                    status.update(label="❌ Échec API", state="error")
+                    raise Exception(f"API_ERROR:{str(api_error)}")
+                
+                # Email optionnel (non bloquant)
+                try:
+                    envoyer_email()
+                    status.write("📧 Email envoyé")
+                except:
+                    status.write("⚠️ Email ignoré")
+                
+                status.write("🔍 Comparaison...")
                 resultat = comparer(extraction_a, extraction_b)
                 
-                st.write(" Compilation du rapport certifié...")
+                status.write("📊 Génération Excel...")
                 wb = generer_excel(resultat, tmp_path)
                 buf_excel = io.BytesIO()
                 wb.save(buf_excel)
                 buf_excel.seek(0)
-    
-                rapport_txt = generer_rapport_txt(resultat, tmp_path)
-                buf_txt = io.BytesIO(rapport_txt.encode("utf-8"))
-                status.update(label="✨ Analyse terminée. Intégrité vérifiée.", state="complete")
                 
-    
-            # 5. RÉSULTATS (Layout 3 colonnes ultra-pro)
-            rapport = resultat["rapport"]
+                rapport_txt = generer_rapport_txt(resultat, tmp_path)
+                
+                status.update(label="✅ Terminé", state="complete")
             
+            # 4. Affichage résultats
+            rapport = resultat["rapport"]
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.metric("INTÉGRITÉ", f"{rapport['score_global']}%")
             with col2:
-                st.metric("CRITIQUES", rapport["rouges"], delta="Attention", delta_color="inverse")
+                st.metric("CRITIQUES", rapport["rouges"], delta="Attention")
             with col3:
-                st.metric("INCERTITUDES", rapport["oranges"], delta="Vérification manuelle")
-    
-            st.markdown("<br>", unsafe_allow_html=True)
-    
-            # 6. EXPORT (Cartes cliquables simulées)
-            st.markdown("###  Livrables de Sortie")
+                st.metric("INCERTITUDES", rapport["oranges"])
+            
+            # 5. Exports
             nom_base = image_file.name.rsplit(".", 1)[0]
             
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                zip_file.writestr(f"{nom_base}_DATA.xlsx", buf_excel.getvalue())
+                zip_file.writestr(f"{nom_base}_AUDIT_LOG.txt", rapport_txt.encode('utf-8'))
+            zip_buffer.seek(0)
+            
             c1, c2 = st.columns(2)
-    
             with c1:
-                # Créer un ZIP avec les deux fichiers
-                zip_buffer = io.BytesIO()
-                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                    # Ajouter Excel
-                    zip_file.writestr(f"{nom_base}_DATA.xlsx", buf_excel.getvalue())
-                    # Ajouter TXT
-                    zip_file.writestr(f"{nom_base}_AUDIT_LOG.txt", rapport_txt.encode('utf-8'))
-                
-                zip_buffer.seek(0)
-                
-                st.download_button(
-                    label="📦 EXPORTER TOUT (ZIP)",
-                    data=zip_buffer,
-                    file_name=f"{nom_base}_DGI.zip",
-                    mime="application/zip",
-                    use_container_width=True,
-                    type="primary"
-                )
-    
+                st.download_button("📦 ZIP COMPLET", zip_buffer, f"{nom_base}_DGI.zip", use_container_width=True)
             with c2:
-                st.download_button(
-                    label="📊 EXPORTER DATA EXCEL",
-                    data=buf_excel,
-                    file_name=f"{nom_base}_DGIDoc.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
-    except:
-        st.info(" 🚩 Limite de la cle API atteinte. Extraction interrompue 🚩.")
+                st.download_button("📊 EXCEL", buf_excel, f"{nom_base}.xlsx", use_container_width=True)
+        
+        except Exception as e:
+            error_str = str(e)
+            if "API_ERROR:" in error_str:
+                st.error(f"🚨 **Erreur API Gemini**\n\n{error_str.replace('API_ERROR:', '')}")
+            elif "429" in error_str or "quota" in error_str.lower():
+                st.error("🚨 **Quota API atteint**\n\nRéessayez plus tard ou contactez l'administrateur.")
+            else:
+                st.error(f"🚨 **Erreur**\n\n```\n{error_str[:300]}\n```")
+                # Option debug
+                if st.checkbox("Afficher l'erreur complète"):
+                    st.exception(e)
+        
+        finally:
+            # Nettoyage
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.unlink(tmp_path)
+                except:
+                    pass
 
         
 
