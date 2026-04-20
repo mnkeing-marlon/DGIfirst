@@ -1,7 +1,7 @@
 import anthropic
 import base64
-import json
 import streamlit as st
+import json
 import re
 from pathlib import Path
 
@@ -100,7 +100,7 @@ def extract_once_claude(api_key: str, image_path: str, prompt: str) -> dict:
     )
     return parse_json(message.content[0].text)
 
-def envoyer_email(model_name="GLM-OCR"):
+def envoyer_email(model_name):
     try:
         msg = EmailMessage()
         msg["From"] = st.secrets["email_envoyeur"]
@@ -192,7 +192,7 @@ import json
 
 def extract_once_glm_structured(api_key: str, image_path: str, custom_prompt: str) -> dict:
     """
-    Extraction avec GLM-OCR - Retourne le format JSON avec scores de confiance
+    Extraction avec GLM-OCR - Gère les cellules fusionnées (colspan/rowspan)
     """
     from glmocr import GlmOcr
     from bs4 import BeautifulSoup
@@ -211,16 +211,13 @@ def extract_once_glm_structured(api_key: str, image_path: str, custom_prompt: st
     table = soup.find('table')
     
     if not table:
-        # Si pas de tableau, retourne le texte brut
         return {
             "titre": {"valeur": html_content[:200], "confiance": 0.5},
             "colonnes": [],
             "lignes": []
         }
     
-    # === Extraction des données ===
-    
-    # 1. Extraire le titre (première cellule ou première ligne)
+    # === 1. Extraire le titre ===
     titre = ""
     first_row = table.find('tr')
     if first_row:
@@ -228,53 +225,107 @@ def extract_once_glm_structured(api_key: str, image_path: str, custom_prompt: st
         if first_cell:
             titre = first_cell.get_text(strip=True)
     
-    # 2. Extraire les noms des colonnes
-    colonnes = []
-    headers = table.find_all('th')
-    if not headers:
-        # Si pas de <th>, prendre la première ligne
-        first_tr = table.find('tr')
-        if first_tr:
-            headers = first_tr.find_all('td')
+    # === 2. Construire la matrice avec conservation des infos de fusion ===
     
-    for th in headers:
-        nom_colonne = th.get_text(strip=True)
-        if nom_colonne and nom_colonne != titre:
-            colonnes.append({
-                "nom": nom_colonne,
-                "confiance": 0.94  
-            })
+    all_rows = table.find_all('tr')
     
-    # 3. Extraire les lignes de données
-    lignes = []
-    rows = table.find_all('tr')
+    # D'abord, collecter toutes les cellules avec leurs attributs
+    cells_info = []  # Liste de listes : (row, col, valeur, rowspan, colspan)
     
-    # Ignorer la ligne d'en-tête si elle a été utilisée
-    start_idx = 1 if headers else 0
-    
-    for tr in rows[start_idx:]:
-        cells = tr.find_all('td')
-        if not cells:
-            continue
-            
-        ligne_data = {}
-        for idx, cell in enumerate(cells):
+    for row_idx, tr in enumerate(all_rows):
+        col_idx = 0
+        for cell in tr.find_all(['td', 'th']):
             valeur = cell.get_text(strip=True)
-            if valeur and idx < len(colonnes):
-                nom_colonne = colonnes[idx]["nom"]
+            rowspan = int(cell.get('rowspan', 1))
+            colspan = int(cell.get('colspan', 1))
+            
+            cells_info.append({
+                "row": row_idx,
+                "col": col_idx,
+                "valeur": valeur,
+                "rowspan": rowspan,
+                "colspan": colspan
+            })
+            
+            col_idx += colspan
+    
+    # Trouver le nombre max de colonnes
+    max_cols = max([c["col"] + c["colspan"] for c in cells_info]) if cells_info else 0
+    
+    # Créer la matrice
+    matrix = [[None for _ in range(max_cols)] for _ in range(len(all_rows))]
+    rowspan_map = {}
+    
+    for cell_info in cells_info:
+        row = cell_info["row"]
+        col = cell_info["col"]
+        valeur = cell_info["valeur"]
+        rowspan = cell_info["rowspan"]
+        colspan = cell_info["colspan"]
+        
+        # Remplir la matrice
+        for r in range(rowspan):
+            for c in range(colspan):
+                if row + r < len(matrix) and col + c < max_cols:
+                    # Ne pas écraser si déjà rempli par un rowspan précédent
+                    if matrix[row + r][col + c] is None:
+                        matrix[row + r][col + c] = valeur
+    
+    # === 3. Extraire les noms des colonnes ===
+    colonnes = []
+    if matrix and len(matrix) > 0:
+        header_row = matrix[0]
+        for idx, valeur in enumerate(header_row):
+            if valeur and valeur != titre:
+                colonnes.append({
+                    "nom": valeur,
+                    "confiance": 0.94
+                })
+    
+    # === 4. Extraire les lignes avec les infos de fusion ===
+    lignes = []
+    start_idx = 1  # Ignorer l'en-tête
+    
+    for row_idx in range(start_idx, len(matrix)):
+        row = matrix[row_idx]
+        ligne_data = {}
+        
+        # Trouver les infos de fusion pour cette ligne
+        fusions_ligne = [c for c in cells_info if c["row"] <= row_idx < c["row"] + c["rowspan"]]
+        
+        for col_idx, valeur in enumerate(row):
+            if col_idx < len(colonnes):
+                nom_colonne = colonnes[col_idx]["nom"]
                 
-                # Calcul d'un score de confiance basé sur la qualité de l'OCR
-                confiance = calculer_confiance_cellule(valeur, cell)
+                # Nettoyer la valeur : ignorer les chiffres parasites dans les cellules vides
+                if valeur and len(str(valeur)) < 3 and str(valeur).isdigit():
+                    # Vérifier si c'est un vrai nombre ou un parasite
+                    # Si la cellule voisine est vide, probablement parasite
+                    voisine_gauche = row[col_idx - 1] if col_idx > 0 else None
+                    if voisine_gauche is None or voisine_gauche == "":
+                        valeur = ""  # Ignorer le parasite
                 
-                ligne_data[nom_colonne] = {
-                    "valeur": valeur,
-                    "confiance": confiance
-                }
+                # Récupérer rowspan et colspan depuis les infos de fusion
+                rowspan_val = 1
+                colspan_val = 1
+                for f in fusions_ligne:
+                    if f["col"] <= col_idx < f["col"] + f["colspan"]:
+                        rowspan_val = f["rowspan"]
+                        colspan_val = f["colspan"]
+                        break
+                
+                if valeur:  # Ne créer la cellule que si elle a une valeur
+                    confiance = calculer_confiance_cellule(valeur, None)
+                    ligne_data[nom_colonne] = {
+                        "valeur": valeur,
+                        "confiance": confiance,
+                        "rowspan": rowspan_val,
+                        "colspan": colspan_val
+                    }
         
         if ligne_data:
             lignes.append(ligne_data)
     
-    # 4. Retourner la structure EXACTE attendue
     return {
         "titre": {"valeur": titre, "confiance": 0.9},
         "colonnes": colonnes,
@@ -290,7 +341,6 @@ def extract_double(api_key: str, image_path: str, engine: str = "claude") -> tup
         # Extraction avec GLM
         extraction_a = extract_once_glm_structured(api_key, image_path, PROMPT_A)
         extraction_b = extract_once_glm_structured(api_key, image_path, PROMPT_B)
-        envoyer_email()
     
     elif engine == "gemini":
         # Extraction avec Gemini
