@@ -4,3 +4,5 @@ Pillow
 protobuf
 streamlit
 google.genai
+glmocr
+beautifulsoup4
