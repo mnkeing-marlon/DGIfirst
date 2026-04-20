@@ -9,7 +9,7 @@ Statuts :
 """
 
 SEUIL_DONNEES = 0.90
-SEUIL_ENTETES = 0.95
+SEUIL_ENTETES = 0.93
 
 
 def normaliser(valeur: str) -> str:
