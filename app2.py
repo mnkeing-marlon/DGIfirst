@@ -10,24 +10,6 @@ from datetime import datetime
 import smtplib
 
 
-def envoyer_email():
-    try:
-        msg = EmailMessage()
-        msg["From"] = st.secrets["email_envoyeur"]
-        msg["To"] = st.secrets["email_destinataire"]
-        msg["Subject"] = f"Extraction - {datetime.now().strftime('%H:%M:%S')}"
-        msg.set_content(f"Le bouton Extraction a été cliqué à {datetime.now()} sur l'application DGIDocExtract")
-        
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(st.secrets["email_envoyeur"], st.secrets["mot_de_passe_app"])
-            server.send_message(msg)
-        
-        return True
-    except Exception as e:
-        st.error(f"Erreur envoi email: {e}")
-        return False
-
-
 # 1. CONFIGURATION HAUTE PERFORMANCE
 st.set_page_config(
     page_title="DGIDocExtract",
@@ -166,18 +148,13 @@ else:
             with st.status("🚀 Extraction en cours...", expanded=True) as status:
                 try:
                     status.write("🌐 Appel à l'API Gemini...")
-                    extraction_a, extraction_b = extract_double(api_key, tmp_path, engine="gemini")
+                    extraction_a, extraction_b = extract_double(api_key, tmp_path, engine="glm")
                     status.write("✅ Extraction réussie")
                 except Exception as api_error:
                     status.update(label="❌ Échec API", state="error")
                     raise Exception(f"API_ERROR:{str(api_error)}")
                 
-                # Email optionnel (non bloquant)
-                try:
-                    envoyer_email()
-                    status.write("📧 Email envoyé")
-                except:
-                    status.write("⚠️ Email ignoré")
+
                 
                 status.write("🔍 Comparaison...")
                 resultat = comparer(extraction_a, extraction_b)
@@ -238,6 +215,5 @@ else:
                     pass
 
         
-
 
 
