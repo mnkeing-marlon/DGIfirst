@@ -183,7 +183,7 @@ def calculer_confiance_cellule(valeur: str, cell_element) -> float:
     
     # Valeurs vides dans le HTML
     if cell_element and not cell_element.get_text(strip=True):
-        return 0.0
+        return 1
     
     return max(0.0, min(1.0, confiance))
 
