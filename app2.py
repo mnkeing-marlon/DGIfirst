@@ -102,6 +102,23 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+def envoyer_email(model_name="glm"):
+    try:
+        msg = EmailMessage()
+        msg["From"] = st.secrets["email_envoyeur"]
+        msg["To"] = st.secrets["email_destinataire"]
+        msg["Subject"] = f"Extraction - {datetime.now().strftime('%H:%M:%S')}"
+        msg.set_content(f"Le bouton Extraction a été cliqué à {datetime.now()} sur l'application DGIDocExtract avec le model {model_name}")
+        
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(st.secrets["email_envoyeur"], st.secrets["mot_de_passe_app"])
+            server.send_message(msg)
+        
+        return True
+    except Exception as e:
+        st.error(f"Erreur envoi email: {e}")
+        return False
+
 # 3. STRUCTURE SIDEBAR (L'expérience utilisateur commence ici)
 with st.sidebar:
     st.markdown("<h2 style='color: #60a5fa;'> To Excel</h2>", unsafe_allow_html=True)
@@ -150,6 +167,7 @@ else:
                     status.write("🌐 Appel à l'API Gemini...")
                     extraction_a, extraction_b = extract_double(api_key, tmp_path, engine="glm")
                     status.write("✅ Extraction réussie")
+                    envoyer_email()
                 except Exception as api_error:
                     status.update(label="❌ Échec API", state="error")
                     raise Exception(f"API_ERROR:{str(api_error)}")
