@@ -163,7 +163,7 @@ def calculer_confiance_cellule(valeur: str, cell_element) -> float:
     
     # Facteurs qui réduisent la confiance
     if not valeur or valeur.strip() == "":
-        return 0.0
+        return 1
     
     # Caractères suspects
     if re.search(r'[�□?]', valeur):
