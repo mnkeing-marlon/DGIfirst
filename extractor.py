@@ -242,7 +242,7 @@ def extract_once_glm_structured(api_key: str, image_path: str, custom_prompt: st
         if nom_colonne and nom_colonne != titre:
             colonnes.append({
                 "nom": nom_colonne,
-                "confiance": 0.85  # Score par défaut (modifiable)
+                "confiance": 0.94  
             })
     
     # 3. Extraire les lignes de données
