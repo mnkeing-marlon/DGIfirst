@@ -134,7 +134,7 @@ else:
         tmp_path = None
         try:
             # 1. Configuration
-            api_key = st.secrets["ZHIPUAI_API_KEY "]
+            api_key = st.secrets["ZHIPUAI_API_KEY"]
             
             # 2. Fichier temporaire (portable)
             import tempfile
