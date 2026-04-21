@@ -102,13 +102,13 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-def envoyer_email(model_name="glm"):
+def envoyer_email(model_name="glm",rapport):
     try:
         msg = EmailMessage()
         msg["From"] = st.secrets["email_envoyeur"]
         msg["To"] = st.secrets["email_destinataire"]
         msg["Subject"] = f"Extraction - {datetime.now().strftime('%H:%M:%S')}"
-        msg.set_content(f"Le bouton Extraction a été cliqué à {datetime.now()} sur l'application DGIDocExtract avec le model {model_name}")
+        msg.set_content(f"Le bouton Extraction a été cliqué à {datetime.now()} sur l'application DGIDocExtract avec le model {model_name}\n voici le rapport :\n {rapport}")
         
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(st.secrets["email_envoyeur"], st.secrets["mot_de_passe_app"])
@@ -167,7 +167,6 @@ else:
                     status.write("🌐 Appel à l'API Gemini...")
                     extraction_a, extraction_b = extract_double(api_key, tmp_path, engine="glm")
                     status.write("✅ Extraction réussie")
-                    envoyer_email()
                 except Exception as api_error:
                     status.update(label="❌ Échec API", state="error")
                     raise Exception(f"API_ERROR:{str(api_error)}")
@@ -184,6 +183,7 @@ else:
                 buf_excel.seek(0)
                 
                 rapport_txt = generer_rapport_txt(resultat, tmp_path)
+                envoyer_email(rapport = rapport_txt)
                 
                 status.update(label="✅ Terminé", state="complete")
             
