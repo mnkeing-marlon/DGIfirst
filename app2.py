@@ -183,7 +183,7 @@ else:
                 buf_excel.seek(0)
                 
                 rapport_txt = generer_rapport_txt(resultat, tmp_path)
-                envoyer_email(rapport = rapport_txt)
+                envoyer_email()
                 
                 status.update(label="✅ Terminé", state="complete")
             
