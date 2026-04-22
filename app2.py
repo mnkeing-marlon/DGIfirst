@@ -145,7 +145,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 if not image_file:
-    st.info(" 👈Bienvenue. Veuillez glisser un document financier dans le panneau latéral pour initier l'analyse.")
+    st.info(" 👈Bienvenue. Veuillez glisser l'image d'une table excel  dans le panneau latéral pour initier la reconstruction.")
 else:
     if st.button("Extraction"):
         tmp_path = None
