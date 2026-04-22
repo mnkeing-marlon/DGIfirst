@@ -102,13 +102,13 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-def envoyer_email(model_name="glm",rapport):
+def envoyer_email(model_name="glm"):
     try:
         msg = EmailMessage()
         msg["From"] = st.secrets["email_envoyeur"]
         msg["To"] = st.secrets["email_destinataire"]
         msg["Subject"] = f"Extraction - {datetime.now().strftime('%H:%M:%S')}"
-        msg.set_content(f"Le bouton Extraction a été cliqué à {datetime.now()} sur l'application DGIDocExtract avec le model {model_name}\n voici le rapport :\n {rapport}")
+        msg.set_content(f"Le bouton Extraction a été cliqué à {datetime.now()} sur l'application DGIDocExtract avec le model {model_name}\n ")
         
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(st.secrets["email_envoyeur"], st.secrets["mot_de_passe_app"])
